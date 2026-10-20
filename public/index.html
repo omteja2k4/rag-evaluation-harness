@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Evaluation Harness</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f8f6; --card: #ffffff; --text: #1d2521; --muted: #5d6b64;
+    --line: #dde3df; --accent: #0f7a5c; --accent-text: #ffffff; --soft: #eaf4f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141a17; --card: #1c2420; --text: #e6ede9; --muted: #98a79f;
+      --line: #2d3832; --accent: #3fb08a; --accent-text: #0c1511; --soft: #1f2d27;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.55; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+            padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 1.1rem; margin: 0 0 14px; }
+  textarea { width: 100%; min-height: 70px; padding: 10px; font: inherit; color: var(--text);
+             background: var(--bg); border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
+  .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  select { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+           background: var(--bg); color: var(--text); }
+  button { font: inherit; font-weight: 600; padding: 9px 18px; border: 0; border-radius: 6px;
+           background: var(--accent); color: var(--accent-text); cursor: pointer; }
+  button:disabled { opacity: .55; cursor: wait; }
+  button:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #answer { white-space: pre-wrap; margin-top: 14px; }
+  .source { background: var(--soft); border-left: 3px solid var(--accent); padding: 8px 12px;
+            margin-top: 10px; font-size: .9rem; border-radius: 0 6px 6px 0; }
+  .source b { color: var(--accent); }
+  .error { color: #c0392b; }
+  .note { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RAG Evaluation Harness</h1>
+  <p class="sub">Ask questions about your PDF, then measure which retrieval setup finds the right chunk most often.</p>
+
+  <section>
+    <h2>Ask a question</h2>
+    <textarea id="question" placeholder="e.g. Which engine executes the JavaScript code?"></textarea>
+    <div class="row">
+      <label>Chunking
+        <select id="strategy">
+          <option value="semantic">Semantic</option>
+          <option value="fixed">Fixed</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="rerank"> Use reranker</label>
+      <button id="askBtn">Ask</button>
+    </div>
+    <div id="answer"></div>
+    <div id="sources"></div>
+  </section>
+
+  <section>
+    <h2>Retrieval hit rate</h2>
+    <p class="note">Runs every question in data/eval_dataset.json against fixed chunking, semantic chunking, and semantic chunking with the reranker. It can take a minute or two.</p>
+    <div class="row"><button id="evalBtn">Run evaluation</button></div>
+    <div id="evalStatus" class="note"></div>
+    <canvas id="chart" height="200" style="display:none"></canvas>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+// Put text on the page safely (no HTML injection)
+function show(el, text, cls = "") { el.textContent = text; el.className = cls; }
+
+$("askBtn").onclick = async () => {
+  const prompt = $("question").value.trim();
+  if (!prompt) return;
+  $("askBtn").disabled = true;
+  show($("answer"), "Thinking...");
+  $("sources").innerHTML = "";
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt,
+        strategy: $("strategy").value,
+        rerank: $("rerank").checked,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    show($("answer"), data.answer);
+    data.sources.forEach((text, i) => {
+      const div = document.createElement("div");
+      div.className = "source";
+      const label = document.createElement("b");
+      label.textContent = `[${i + 1}] `;
+      div.append(label, text);
+      $("sources").appendChild(div);
+    });
+  } catch (err) {
+    show($("answer"), "Something went wrong: " + err.message, "error");
+  }
+  $("askBtn").disabled = false;
+};
+
+let chart;
+$("evalBtn").onclick = async () => {
+  $("evalBtn").disabled = true;
+  show($("evalStatus"), "Running evaluation, please wait...", "note");
+
+  try {
+    const res = await fetch("/evaluate", { method: "POST" });
+    const results = await res.json();
+    if (!res.ok) throw new Error(results.error);
+
+    show($("evalStatus"), results.map((r) => `${r.name}: ${r.hits}/${r.total} (${r.hitRate}%)`).join("  |  "), "note");
+    $("chart").style.display = "block";
+    if (chart) chart.destroy();
+    chart = new Chart($("chart"), {
+      type: "bar",
+      data: {
+        labels: results.map((r) => r.name),
+        datasets: [{
+          label: "Hit rate (%)",
+          data: results.map((r) => r.hitRate),
+          backgroundColor: ["#8da2f0", "#7cc4aa", "#0f7a5c"],
+        }],
+      },
+      options: { scales: { y: { min: 0, max: 100 } }, plugins: { legend: { display: false } } },
+    });
+  } catch (err) {
+    show($("evalStatus"), "Evaluation failed: " + err.message, "error");
+  }
+  $("evalBtn").disabled = false;
+};
+</script>
+</body>
+</html>

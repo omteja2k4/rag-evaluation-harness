@@ -1,0 +1,90 @@
+[
+  {
+    "question": "Who is the original author of this runtime?",
+    "expectedKeyword": "Ryan Dahl"
+  },
+  {
+    "question": "Which engine executes the JavaScript code?",
+    "expectedKeyword": "V8"
+  },
+  {
+    "question": "How can one thread serve many users at the same time?",
+    "expectedKeyword": "event loop"
+  },
+  {
+    "question": "How large is the default pool used for background work like DNS lookups?",
+    "expectedKeyword": "4 threads"
+  },
+  {
+    "question": "Which tool downloads third-party libraries by default?",
+    "expectedKeyword": "npm install"
+  },
+  {
+    "question": "Which file makes sure every machine installs identical dependency versions?",
+    "expectedKeyword": "package-lock.json"
+  },
+  {
+    "question": "How do I turn on import and export syntax in my project?",
+    "expectedKeyword": "\"type\": \"module\""
+  },
+  {
+    "question": "Which API reads files and returns promises?",
+    "expectedKeyword": "fs.promises"
+  },
+  {
+    "question": "Which popular framework adds routing on top of the built-in server module?",
+    "expectedKeyword": "Express"
+  },
+  {
+    "question": "How does a middleware pass control onward in the chain?",
+    "expectedKeyword": "next()"
+  },
+  {
+    "question": "Which function runs a callback before the loop moves on and before promises resolve?",
+    "expectedKeyword": "process.nextTick"
+  },
+  {
+    "question": "Which function runs code in the check phase right after I/O?",
+    "expectedKeyword": "setImmediate"
+  },
+  {
+    "question": "Name one kind of stream that can both read and write.",
+    "expectedKeyword": "Duplex"
+  },
+  {
+    "question": "What object stores raw bytes like pictures?",
+    "expectedKeyword": "Buffer"
+  },
+  {
+    "question": "Which class lets objects subscribe to and fire named events?",
+    "expectedKeyword": "EventEmitter"
+  },
+  {
+    "question": "How can a server make use of every processor core by running several copies?",
+    "expectedKeyword": "cluster module"
+  },
+  {
+    "question": "Which module moves heavy calculations off the main thread?",
+    "expectedKeyword": "worker_threads"
+  },
+  {
+    "question": "Which release versions should I pick for a production deployment?",
+    "expectedKeyword": "even-numbered"
+  },
+  {
+    "question": "Where in code do I read secret keys and settings?",
+    "expectedKeyword": "process.env"
+  },
+  {
+    "question": "Which syntax makes asynchronous code look sequential?",
+    "expectedKeyword": "async/await"
+  },
+  {
+    "question": "How do I combine folder names into a path that works on Windows and Linux?",
+    "expectedKeyword": "path.join"
+  },
+  {
+    "question": "How should failures from awaited calls be caught?",
+    "expectedKeyword": "try/catch"
+  }
+]
